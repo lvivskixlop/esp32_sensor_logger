@@ -4,8 +4,11 @@
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <HTTPClient.h>
-#include <default_configs.h>
 #include <EEPROM.h>
+#include <default_configs.h>
+#include <wifi_helpers.h>
+#include <http_helpers.h>
+#include <json_helpers.h>
 
 #define ADC_BATTERY_VOLTAGE_PIN 36
 
@@ -18,9 +21,6 @@ unsigned long lastReadTime = 0;
 float temperature;
 float humidity;
 float batteryVoltage;
-
-StaticJsonDocument<4096> jsonDocument;
-char buffer[4096];
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -107,23 +107,6 @@ void handleSettingsSetup()
 	String responseBody;
 	serializeJson(responseDoc, responseBody);
 	server.send(200, "application/json", responseBody);
-}
-
-void create_env_json(float temperature, float humidity, float voltage)
-{
-	jsonDocument.clear();
-	add_json_object("temperature", temperature, "°C");
-	add_json_object("humidity", humidity, "%");
-	add_json_object("voltage", voltage, "V");
-	serializeJson(jsonDocument, buffer);
-}
-
-void add_json_object(char *tag, float value, char *unit)
-{
-	JsonObject obj = jsonDocument.createNestedObject();
-	obj["type"] = tag;
-	obj["value"] = value;
-	obj["unit"] = unit;
 }
 
 void getEnv()
@@ -287,53 +270,6 @@ void gatherData()
 	temperature = dht.readTemperature();
 	humidity = dht.readHumidity();
 	batteryVoltage = readBatteryVoltagePrecise();
-}
-
-void connectToWifi()
-{
-	if (!WiFi.config(LOCAL_IP, GATEWAY, SUBNET, PRIMARY_DNS, SECONDARY_DNS))
-	{
-		Serial.println("STA Failed to configure");
-	}
-	Serial.print("Connecting to ");
-	Serial.println(SSID);
-	WiFi.begin(SSID, WIFI_PASSWORD);
-
-	while (WiFi.status() != WL_CONNECTED)
-	{
-		Serial.print(".");
-		delay(500);
-	}
-
-	Serial.print("Connected. IP: ");
-	Serial.println(WiFi.localIP());
-}
-
-void reconnectToWifi()
-{
-	while (WiFi.status() != WL_CONNECTED)
-	{
-		Serial.println("Reconnecting to WiFi...");
-		WiFi.disconnect();
-		WiFi.reconnect();
-		delay(RECONNECT_INTERVAL);
-	}
-}
-
-String getHostHeaderFromUrl(String url)
-{
-	int index = url.indexOf("://");
-	if (index != -1)
-	{
-		String host = url.substring(index + 3);
-		index = host.indexOf("/");
-		if (index != -1)
-		{
-			host = host.substring(0, index);
-		}
-		return host;
-	}
-	return "";
 }
 
 void callApi(String url, String method, String body, String header, String &response)
