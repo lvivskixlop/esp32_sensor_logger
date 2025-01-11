@@ -1,0 +1,18 @@
+{
+  "voltageDividerRatio": 3.17,
+  "voltageCorrection": 1.064,
+  "batteryMinimalVoltage": 6.0,
+  "sensorReadAndSendInterval": 600000,
+  "requestTimeout": 30000,
+  "reconnectInterval": 30000,
+  "ssid": "TRDLviv_2.4",
+  "wifiPassword": "0963739595",
+  "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbzlhPt5KgMKRvYqPHTS6Qfln0peAIw5FWOxu_rNcW4eCGuDorw57CDuWHINWZ66R6mJ/exec",
+  "timeApiUrl": "https://timeapi.io/api/time/current/zone?timeZone=Europe/Kyiv",
+  "webhookSite": "https://webhook.site/e4144c5f-539c-4694-bb0b-54cd62b1eff0",
+  "localIp": "192.168.88.101",
+  "gateway": "192.168.88.1",
+  "subnet": "255.255.255.0",
+  "primaryDns": "8.8.8.8",
+  "secondaryDns": "8.8.4.4"
+}
