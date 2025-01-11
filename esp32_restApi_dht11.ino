@@ -187,7 +187,7 @@ void getEnv()
 	server.send(200, "application/json", buffer);
 }
 
-void sendData()
+void sendData(bool lastMessage = false)
 {
 	gatherData();
 	String currentTime = getTimeFromAPI();
@@ -201,7 +201,15 @@ void sendData()
 	{
 		return;
 	}
-	String body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":" + String(batteryVoltage) + "}";
+	String body;
+	if (lastMessage)
+	{
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\"}";
+	}
+	else
+	{
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":" + String(batteryVoltage) + "}";
+	}
 	String response;
 	callApi(GOOGLE_APPS_SCRIPT_URL, "POST", body, "application/json", response);
 }
@@ -236,12 +244,14 @@ void setup()
 
 void loop()
 {
-	// if (batteryVoltage < BATTERY_MINIMAL_VOLTAGE)
-	// {
-	// 	// go deep sleep
-	// 	//		Serial.flush();
-	// 	//		esp_deep_sleep_start();
-	// }
+	if (batteryVoltage < BATTERY_MINIMAL_VOLTAGE)
+	{
+		// send goodbye message to google api
+		sendData(true);
+		//  go deep sleep
+		Serial.flush();
+		esp_deep_sleep_start();
+	}
 
 	unsigned long currentMillis = millis();
 
