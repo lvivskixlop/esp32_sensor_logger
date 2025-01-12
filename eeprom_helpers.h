@@ -9,6 +9,7 @@ void saveSettingsToEEPROM()
     doc["sensorReadAndSendInterval"] = SENSOR_READ_AND_SEND_INTERVAL;
     doc["requestTimeout"] = REQUEST_TIMEOUT;
     doc["reconnectInterval"] = RECONNECT_INTERVAL;
+    doc["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
     doc["ssid"] = SSID;
     doc["wifiPassword"] = WIFI_PASSWORD;
     doc["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
@@ -63,6 +64,8 @@ void loadSettingsFromEEPROM()
         REQUEST_TIMEOUT = doc["requestTimeout"].as<int>();
     if (doc.containsKey("reconnectInterval"))
         RECONNECT_INTERVAL = doc["reconnectInterval"].as<int>();
+    if (doc.containsKey("lowBatteryWorkTime"))
+        LOW_BATTERY_WORK_TIME = doc["lowBatteryWorkTime"].as<int>();
     if (doc.containsKey("ssid"))
         SSID = strdup(doc["ssid"].as<const char *>());
     if (doc.containsKey("wifiPassword"))

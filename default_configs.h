@@ -4,6 +4,7 @@ float BATTERY_MINIMAL_VOLTAGE = 6.0;        // lifepo4 min is 2,5. So better don
 int SENSOR_READ_AND_SEND_INTERVAL = 600000; // 10 minutes
 int REQUEST_TIMEOUT = 30000;                // 30 seconds
 int RECONNECT_INTERVAL = 30000;             // 30 seconds
+int LOW_BATTERY_WORK_TIME = 300000;         // 5 minutes
 char *SSID = "TRDLviv_2.4";
 char *WIFI_PASSWORD = "0963739595";
 char *GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlhPt5KgMKRvYqPHTS6Qfln0peAIw5FWOxu_rNcW4eCGuDorw57CDuWHINWZ66R6mJ/exec";

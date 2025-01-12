@@ -5,6 +5,7 @@
   "sensorReadAndSendInterval": 600000,
   "requestTimeout": 30000,
   "reconnectInterval": 30000,
+  "lowBatteryWorkTime": 300000,
   "ssid": "TRDLviv_2.4",
   "wifiPassword": "0963739595",
   "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbzlhPt5KgMKRvYqPHTS6Qfln0peAIw5FWOxu_rNcW4eCGuDorw57CDuWHINWZ66R6mJ/exec",

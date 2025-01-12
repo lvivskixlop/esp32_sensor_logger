@@ -18,6 +18,7 @@
 #define DHTTYPE DHT11
 
 unsigned long lastReadTime = 0;
+unsigned long lowBatteryTime = 0;
 float temperature;
 float humidity;
 float batteryVoltage;
@@ -133,6 +134,8 @@ void handleSettingsSetup()
 		REQUEST_TIMEOUT = doc["requestTimeout"].as<int>();
 	if (doc.containsKey("reconnectInterval"))
 		RECONNECT_INTERVAL = doc["reconnectInterval"].as<int>();
+	if (doc.containsKey("lowBatteryWorkTime"))
+		LOW_BATTERY_WORK_TIME = doc["lowBatteryWorkTime"].as<int>();
 	if (doc.containsKey("ssid"))
 		SSID = strdup(doc["ssid"].as<const char *>());
 	if (doc.containsKey("wifiPassword"))
@@ -163,6 +166,7 @@ void handleSettingsSetup()
 	responseDoc["sensorReadAndSendInterval"] = SENSOR_READ_AND_SEND_INTERVAL;
 	responseDoc["requestTimeout"] = REQUEST_TIMEOUT;
 	responseDoc["reconnectInterval"] = RECONNECT_INTERVAL;
+	responseDoc["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
 	responseDoc["ssid"] = SSID;
 	responseDoc["wifiPassword"] = WIFI_PASSWORD;
 	responseDoc["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
@@ -246,11 +250,20 @@ void loop()
 {
 	if (batteryVoltage < BATTERY_MINIMAL_VOLTAGE)
 	{
-		// send goodbye message to google api
-		sendData(true);
-		//  go deep sleep
-		Serial.flush();
-		esp_deep_sleep_start();
+		lowBatteryTime = lowBatteryTime == 0 ? millis() : lowBatteryTime;
+		if (millis() - lowBatteryTime >= LOW_BATTERY_WORK_TIME)
+		{
+			// send goodbye message to google api
+			sendData(true);
+			delay(REQUEST_TIMEOUT);
+			//  go deep sleep
+			Serial.flush();
+			esp_deep_sleep_start();
+		}
+	}
+	else
+	{
+		lowBatteryTime = 0;
 	}
 
 	unsigned long currentMillis = millis();
