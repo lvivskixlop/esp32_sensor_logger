@@ -113,8 +113,9 @@ void handleSettingsSetup()
 	}
 
 	String body = server.arg("plain");
-	DynamicJsonDocument doc(1024);
-	DeserializationError error = deserializeJson(doc, body);
+	DynamicJsonDocument jsonDocument(1024);
+
+	DeserializationError error = deserializeJson(jsonDocument, body);
 
 	if (error)
 	{
@@ -122,64 +123,11 @@ void handleSettingsSetup()
 		return;
 	}
 
-	if (doc.containsKey("voltageDividerRatio"))
-		VOLTAGE_DIVIDER_RATIO = doc["voltageDividerRatio"].as<float>();
-	if (doc.containsKey("voltageCorrection"))
-		VOLTAGE_CORRECTION = doc["voltageCorrection"].as<float>();
-	if (doc.containsKey("batteryMinimalVoltage"))
-		BATTERY_MINIMAL_VOLTAGE = doc["batteryMinimalVoltage"].as<float>();
-	if (doc.containsKey("sensorReadAndSendInterval"))
-		SENSOR_READ_AND_SEND_INTERVAL = doc["sensorReadAndSendInterval"].as<int>();
-	if (doc.containsKey("requestTimeout"))
-		REQUEST_TIMEOUT = doc["requestTimeout"].as<int>();
-	if (doc.containsKey("reconnectInterval"))
-		RECONNECT_INTERVAL = doc["reconnectInterval"].as<int>();
-	if (doc.containsKey("lowBatteryWorkTime"))
-		LOW_BATTERY_WORK_TIME = doc["lowBatteryWorkTime"].as<int>();
-	if (doc.containsKey("ssid"))
-		SSID = strdup(doc["ssid"].as<const char *>());
-	if (doc.containsKey("wifiPassword"))
-		WIFI_PASSWORD = strdup(doc["wifiPassword"].as<const char *>());
-	if (doc.containsKey("googleAppsScriptUrl"))
-		GOOGLE_APPS_SCRIPT_URL = strdup(doc["googleAppsScriptUrl"].as<const char *>());
-	if (doc.containsKey("timeApiUrl"))
-		TIME_API_URL = strdup(doc["timeApiUrl"].as<const char *>());
-	if (doc.containsKey("webhookSite"))
-		WEBHOOK_SITE = strdup(doc["webhookSite"].as<const char *>());
-	if (doc.containsKey("localIp"))
-		LOCAL_IP.fromString(doc["localIp"].as<const char *>());
-	if (doc.containsKey("gateway"))
-		GATEWAY.fromString(doc["gateway"].as<const char *>());
-	if (doc.containsKey("subnet"))
-		SUBNET.fromString(doc["subnet"].as<const char *>());
-	if (doc.containsKey("primaryDns"))
-		PRIMARY_DNS.fromString(doc["primaryDns"].as<const char *>());
-	if (doc.containsKey("secondaryDns"))
-		SECONDARY_DNS.fromString(doc["secondaryDns"].as<const char *>());
+	setSettingsFromJson(jsonDocument);
 
 	saveSettingsToEEPROM();
 
-	DynamicJsonDocument responseDoc(1024);
-	responseDoc["voltageDividerRatio"] = VOLTAGE_DIVIDER_RATIO;
-	responseDoc["voltageCorrection"] = VOLTAGE_CORRECTION;
-	responseDoc["batteryMinimalVoltage"] = BATTERY_MINIMAL_VOLTAGE;
-	responseDoc["sensorReadAndSendInterval"] = SENSOR_READ_AND_SEND_INTERVAL;
-	responseDoc["requestTimeout"] = REQUEST_TIMEOUT;
-	responseDoc["reconnectInterval"] = RECONNECT_INTERVAL;
-	responseDoc["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
-	responseDoc["ssid"] = SSID;
-	responseDoc["wifiPassword"] = WIFI_PASSWORD;
-	responseDoc["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
-	responseDoc["timeApiUrl"] = TIME_API_URL;
-	responseDoc["webhookSite"] = WEBHOOK_SITE;
-	responseDoc["localIp"] = LOCAL_IP.toString();
-	responseDoc["gateway"] = GATEWAY.toString();
-	responseDoc["subnet"] = SUBNET.toString();
-	responseDoc["primaryDns"] = PRIMARY_DNS.toString();
-	responseDoc["secondaryDns"] = SECONDARY_DNS.toString();
-
-	String responseBody;
-	serializeJson(responseDoc, responseBody);
+	String responseBody = createJsonStringFromSettings();
 	server.send(200, "application/json", responseBody);
 }
 
@@ -187,7 +135,7 @@ void getEnv()
 {
 	Serial.println("Get env");
 	gatherData();
-	create_env_json(temperature, humidity, batteryVoltage);
+	createEnvJson(temperature, humidity, batteryVoltage);
 	server.send(200, "application/json", buffer);
 }
 
