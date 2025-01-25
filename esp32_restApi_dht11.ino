@@ -10,11 +10,9 @@
 #include <http_helpers.h>
 #include <json_helpers.h>
 #include <eeprom_helpers.h>
+#include <batteries_helpers.h>
 #include <adapters.h>
 
-#define ADC_BATTERY_VOLTAGE_PIN 36
-
-#define DHTPIN 27
 #define DHTTYPE DHT11
 
 unsigned long lastReadTime = 0;
@@ -32,69 +30,6 @@ void setup_routing()
 	server.on("/env", getEnv);
 	server.on("/setup", HTTP_POST, handleSettingsSetup);
 	server.begin();
-}
-
-float readBatteryVoltage()
-{
-	int rawADC = analogRead(ADC_BATTERY_VOLTAGE_PIN);
-	float voltage = rawADC * (3.3 / 4095.0) * VOLTAGE_DIVIDER_RATIO; // Convert ADC reading to voltage
-	voltage *= VOLTAGE_CORRECTION;
-	return voltage;
-}
-
-float readBatteryVoltagePrecise(int numReadings = 10, float outlierThreshold = 0.05)
-{
-	int adcValues[numReadings];
-	float voltages[numReadings];
-
-	// Step 1: Collect multiple ADC readings
-	for (int i = 0; i < numReadings; i++)
-	{
-		adcValues[i] = analogRead(ADC_BATTERY_VOLTAGE_PIN);
-		voltages[i] = adcValues[i] * (3.3 / 4095.0) * VOLTAGE_DIVIDER_RATIO;
-		voltages[i] *= VOLTAGE_CORRECTION;
-		delay(10); // Small delay to allow stable readings
-	}
-
-	// Step 2: Sort the voltage array (for median calculation)
-	for (int i = 0; i < numReadings - 1; i++)
-	{
-		for (int j = i + 1; j < numReadings; j++)
-		{
-			if (voltages[i] > voltages[j])
-			{
-				float temp = voltages[i];
-				voltages[i] = voltages[j];
-				voltages[j] = temp;
-			}
-		}
-	}
-
-	// Step 3: Calculate the median
-	float median;
-	if (numReadings % 2 == 0)
-	{
-		median = (voltages[numReadings / 2 - 1] + voltages[numReadings / 2]) / 2.0;
-	}
-	else
-	{
-		median = voltages[numReadings / 2];
-	}
-
-	// Step 4: Remove outliers (values too far from the median)
-	float sum = 0;
-	int validCount = 0;
-	for (int i = 0; i < numReadings; i++)
-	{
-		if (abs(voltages[i] - median) <= outlierThreshold * median)
-		{
-			sum += voltages[i];
-			validCount++;
-		}
-	}
-
-	// Step 5: Return the average of valid values
-	return validCount > 0 ? sum / validCount : median;
 }
 
 void gatherData()
