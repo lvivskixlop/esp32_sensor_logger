@@ -1,4 +1,4 @@
-float readBatteryVoltagePrecise(int numReadings = 10, float outlierThreshold = 0.05)
+float readVoltagePrecise(int PIN, float dividerRatio, float voltageCorrection, int numReadings = 10, float outlierThreshold = 0.05)
 {
     int adcValues[numReadings];
     float voltages[numReadings];
@@ -6,9 +6,10 @@ float readBatteryVoltagePrecise(int numReadings = 10, float outlierThreshold = 0
     // Step 1: Collect multiple ADC readings
     for (int i = 0; i < numReadings; i++)
     {
-        adcValues[i] = analogRead(ADC_BATTERY_VOLTAGE_PIN);
-        voltages[i] = adcValues[i] * (3.3 / 4095.0) * VOLTAGE_DIVIDER_RATIO;
-        voltages[i] *= VOLTAGE_CORRECTION;
+        adcValues[i] = analogRead(PIN);
+        Serial.println("Read from pin " + String(PIN) + ", value: " + String(adcValues[i]));
+        voltages[i] = adcValues[i] * (3.3 / 4095.0) * dividerRatio;
+        voltages[i] *= voltageCorrection;
         delay(10); // Small delay to allow stable readings
     }
 

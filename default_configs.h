@@ -1,12 +1,15 @@
 // pins
 int ADC_BATTERY_VOLTAGE_PIN = 36;
+int ADC_SOLAR_VOLTAGE_PIN = 33;
 int DHTPIN = 27;
 int CLOCK_CLK = 34;
 int CLOCK_DAT = 35;
 int CLOCK_RST = 32;
 
-float VOLTAGE_DIVIDER_RATIO = 3.17;
-float VOLTAGE_CORRECTION = 1.064;
+float BATTERY_VOLTAGE_DIVIDER_RATIO = 3.17;
+float BATTERY_VOLTAGE_CORRECTION = 1.064;
+float SOLAR_VOLTAGE_DIVIDER_RATIO = 3.27;
+float SOLAR_VOLTAGE_CORRECTION = 1.0;
 float BATTERY_MINIMAL_VOLTAGE = 6.0;        // lifepo4 min is 2,5. So better don't make it below 3. And since batteries are 2S, 3.0 + 3.0 = 6.0
 int SENSOR_READ_AND_SEND_INTERVAL = 600000; // 10 minutes
 int REQUEST_TIMEOUT = 30000;                // 30 seconds
@@ -14,7 +17,7 @@ int RECONNECT_INTERVAL = 30000;             // 30 seconds
 int LOW_BATTERY_WORK_TIME = 300000;         // 5 minutes
 char *SSID = "TRDLviv_2.4";
 char *WIFI_PASSWORD = "0963739595";
-char *GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlhPt5KgMKRvYqPHTS6Qfln0peAIw5FWOxu_rNcW4eCGuDorw57CDuWHINWZ66R6mJ/exec";
+char *GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAQvx4EzeSrPjetWynwa0HkYIdZgZagqO9Tzxt-kktKQ8MR-JJrsaclHwfoL1hSurM/exec";
 char *TIME_API_URL = "https://timeapi.io/api/time/current/zone?timeZone=Europe/Kyiv";
 char *WEBHOOK_SITE = "https://webhook.site/e4144c5f-539c-4694-bb0b-54cd62b1eff0";
 IPAddress LOCAL_IP(192, 168, 88, 101);

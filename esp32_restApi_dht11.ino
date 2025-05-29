@@ -10,7 +10,7 @@
 #include <http_helpers.h>
 #include <json_helpers.h>
 #include <eeprom_helpers.h>
-#include <batteries_helpers.h>
+#include <voltage_helpers.h>
 #include <adapters.h>
 
 #define DHTTYPE DHT11
@@ -20,6 +20,7 @@ unsigned long lowBatteryTime = 0;
 float temperature;
 float humidity;
 float batteryVoltage;
+float solarVoltage;
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -36,7 +37,8 @@ void gatherData()
 {
 	temperature = dht.readTemperature();
 	humidity = dht.readHumidity();
-	batteryVoltage = readBatteryVoltagePrecise();
+	batteryVoltage = readVoltagePrecise(ADC_BATTERY_VOLTAGE_PIN, BATTERY_VOLTAGE_DIVIDER_RATIO, BATTERY_VOLTAGE_CORRECTION);
+	solarVoltage = readVoltagePrecise(ADC_SOLAR_VOLTAGE_PIN, SOLAR_VOLTAGE_DIVIDER_RATIO, SOLAR_VOLTAGE_CORRECTION);
 }
 
 void handleSettingsSetup()
@@ -68,9 +70,10 @@ void handleSettingsSetup()
 
 void getEnv()
 {
-	Serial.println("Get env");
 	gatherData();
-	createEnvJson(temperature, humidity, batteryVoltage);
+	String data = "Get env: batteryVoltage: " + String(batteryVoltage) + ", solarVoltage: " + String(solarVoltage);
+	Serial.println(data);
+	createEnvJson(temperature, humidity, batteryVoltage, solarVoltage);
 	server.send(200, "application/json", buffer);
 }
 
@@ -91,11 +94,11 @@ void sendData(bool lastMessage = false)
 	String body;
 	if (lastMessage)
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\"}";
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\",\"solarVoltage\":" + String(solarVoltage) + "}";
 	}
 	else
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":" + String(batteryVoltage) + "}";
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"batteryVoltage\":" + String(batteryVoltage) + ",\"solarVoltage\":" + String(solarVoltage) + "}";
 	}
 	String response;
 	callApi(GOOGLE_APPS_SCRIPT_URL, "POST", body, "application/json", response);
@@ -124,7 +127,10 @@ void setup()
 	dht.begin();
 	connectToWifi();
 	setup_routing();
-	pinMode(ADC_BATTERY_VOLTAGE_PIN, INPUT); // Configure ADC pin
+	pinMode(ADC_BATTERY_VOLTAGE_PIN, INPUT);
+	analogSetPinAttenuation(ADC_BATTERY_VOLTAGE_PIN, ADC_11db);
+	pinMode(ADC_SOLAR_VOLTAGE_PIN, INPUT);
+	analogSetPinAttenuation(ADC_SOLAR_VOLTAGE_PIN, ADC_11db);
 	EEPROM.begin(EEPROM_SIZE);
 	loadSettingsFromEEPROM();
 }
