@@ -8,6 +8,12 @@ int CLOCK_CLK = 34;
 int CLOCK_DAT = 35;
 int CLOCK_RST = 32;
 
+// Relay timing settings (24-hour format)
+int RELAY1_ON_HOUR = 7;
+int RELAY1_OFF_HOUR = 23;
+int RELAY2_ON_HOUR = 7;
+int RELAY2_OFF_HOUR = 23;
+
 float BATTERY_VOLTAGE_DIVIDER_RATIO = 3.17;
 float BATTERY_VOLTAGE_CORRECTION = 1.064;
 float BATTERY_MINIMAL_VOLTAGE = 6.0;        // lifepo4 min is 2,5. So better don't make it below 3. And since batteries are 2S, 3.0 + 3.0 = 6.0

@@ -102,10 +102,45 @@ void getEnv()
 	server.send(200, "application/json", buffer);
 }
 
+void updateRelaysByTime(const String& currentTime) {
+	// Extract hour from time string (format: "YYYY-MM-DDTHH:mm:ss.sssZ")
+	int currentHour = currentTime.substring(11, 13).toInt();
+	
+	// Update Relay 1
+	if (currentHour >= RELAY1_ON_HOUR && currentHour < RELAY1_OFF_HOUR) {
+		if (!relay1State) {
+			relay1State = true;
+			digitalWrite(RELAY_1_PIN, HIGH);  // Remember: HIGH turns relay ON due to active-LOW
+		}
+	} else {
+		if (relay1State) {
+			relay1State = false;
+			digitalWrite(RELAY_1_PIN, LOW);
+		}
+	}
+	
+	// Update Relay 2
+	if (currentHour >= RELAY2_ON_HOUR && currentHour < RELAY2_OFF_HOUR) {
+		if (!relay2State) {
+			relay2State = true;
+			digitalWrite(RELAY_2_PIN, HIGH);
+		}
+	} else {
+		if (relay2State) {
+			relay2State = false;
+			digitalWrite(RELAY_2_PIN, LOW);
+		}
+	}
+}
+
 void sendData(bool lastMessage = false)
 {
 	gatherData();
 	String currentTime = getTimeFromAPI();
+
+	if (currentTime.length() > 0) {
+		updateRelaysByTime(currentTime);  // Update relay states based on time
+	}
 
 	if (isnan(temperature) || isnan(humidity) || currentTime == "")
 	{
@@ -166,11 +201,11 @@ void setup()
 	pinMode(SOIL_MOISTURE_PIN, INPUT);
 	analogSetPinAttenuation(SOIL_MOISTURE_PIN, ADC_11db);
 	
-	// Setup relay pins
+	// Setup relay pins and ensure they start in OFF state
 	pinMode(RELAY_1_PIN, OUTPUT);
 	pinMode(RELAY_2_PIN, OUTPUT);
-	digitalWrite(RELAY_1_PIN, LOW);
-	digitalWrite(RELAY_2_PIN, LOW);
+	digitalWrite(RELAY_1_PIN, HIGH);  // Ensure relay starts OFF
+	digitalWrite(RELAY_2_PIN, HIGH);  // Ensure relay starts OFF
 	
 	EEPROM.begin(EEPROM_SIZE);
 	loadSettingsFromEEPROM();

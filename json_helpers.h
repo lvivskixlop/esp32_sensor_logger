@@ -45,6 +45,14 @@ void setSettingsFromJson(DynamicJsonDocument &jsonDocument)
         RECONNECT_INTERVAL = jsonDocument["reconnectInterval"].as<int>();
     if (jsonDocument.containsKey("lowBatteryWorkTime"))
         LOW_BATTERY_WORK_TIME = jsonDocument["lowBatteryWorkTime"].as<int>();
+    if (jsonDocument.containsKey("relay1OnHour"))
+        RELAY1_ON_HOUR = jsonDocument["relay1OnHour"].as<int>();
+    if (jsonDocument.containsKey("relay1OffHour"))
+        RELAY1_OFF_HOUR = jsonDocument["relay1OffHour"].as<int>();
+    if (jsonDocument.containsKey("relay2OnHour"))
+        RELAY2_ON_HOUR = jsonDocument["relay2OnHour"].as<int>();
+    if (jsonDocument.containsKey("relay2OffHour"))
+        RELAY2_OFF_HOUR = jsonDocument["relay2OffHour"].as<int>();
     if (jsonDocument.containsKey("ssid"))
         SSID = strdup(jsonDocument["ssid"].as<const char *>());
     if (jsonDocument.containsKey("wifiPassword"))
@@ -78,6 +86,10 @@ String createJsonStringFromSettings()
     jsonDocument["requestTimeout"] = REQUEST_TIMEOUT;
     jsonDocument["reconnectInterval"] = RECONNECT_INTERVAL;
     jsonDocument["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
+    jsonDocument["relay1OnHour"] = RELAY1_ON_HOUR;
+    jsonDocument["relay1OffHour"] = RELAY1_OFF_HOUR;
+    jsonDocument["relay2OnHour"] = RELAY2_ON_HOUR;
+    jsonDocument["relay2OffHour"] = RELAY2_OFF_HOUR;
     jsonDocument["ssid"] = SSID;
     jsonDocument["wifiPassword"] = WIFI_PASSWORD;
     jsonDocument["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
