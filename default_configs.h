@@ -1,6 +1,8 @@
 // pins
 int ADC_BATTERY_VOLTAGE_PIN = 36;
-int ADC_SOLAR_VOLTAGE_PIN = 33;
+int SOIL_MOISTURE_PIN = 33;
+int RELAY_1_PIN = 13;
+int RELAY_2_PIN = 14;
 int DHTPIN = 27;
 int CLOCK_CLK = 34;
 int CLOCK_DAT = 35;
@@ -8,8 +10,6 @@ int CLOCK_RST = 32;
 
 float BATTERY_VOLTAGE_DIVIDER_RATIO = 3.17;
 float BATTERY_VOLTAGE_CORRECTION = 1.064;
-float SOLAR_VOLTAGE_DIVIDER_RATIO = 3.27;
-float SOLAR_VOLTAGE_CORRECTION = 1.0;
 float BATTERY_MINIMAL_VOLTAGE = 6.0;        // lifepo4 min is 2,5. So better don't make it below 3. And since batteries are 2S, 3.0 + 3.0 = 6.0
 int SENSOR_READ_AND_SEND_INTERVAL = 600000; // 10 minutes
 int REQUEST_TIMEOUT = 30000;                // 30 seconds

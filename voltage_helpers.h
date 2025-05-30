@@ -1,3 +1,6 @@
+#ifndef VOLTAGE_HELPERS_H
+#define VOLTAGE_HELPERS_H
+
 float readVoltagePrecise(int PIN, float dividerRatio, float voltageCorrection, int numReadings = 10, float outlierThreshold = 0.05)
 {
     int adcValues[numReadings];
@@ -53,3 +56,5 @@ float readVoltagePrecise(int PIN, float dividerRatio, float voltageCorrection, i
     // Step 5: Return the average of valid values
     return validCount > 0 ? sum / validCount : median;
 }
+
+#endif

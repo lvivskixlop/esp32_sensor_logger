@@ -9,13 +9,23 @@ void addJsonObject(char *tag, float value, char *unit)
     obj["unit"] = unit;
 }
 
-void createEnvJson(float temperature, float humidity, float batteryVoltage, float solarVoltage)
+void addJsonBoolObject(char *tag, bool value)
+{
+    JsonObject obj = jsonDocument.createNestedObject();
+    obj["type"] = tag;
+    obj["value"] = value;
+    obj["unit"] = "";
+}
+
+void createEnvJson(float temperature, float humidity, float batteryVoltage, int soilMoisture, bool relay1State, bool relay2State)
 {
     jsonDocument.clear();
     addJsonObject("temperature", temperature, "°C");
     addJsonObject("humidity", humidity, "%");
     addJsonObject("batteryVoltage", batteryVoltage, "V");
-    addJsonObject("solarVoltage", solarVoltage, "V");
+    addJsonObject("soilMoisture", soilMoisture, "%");
+    addJsonBoolObject("relay1", relay1State);
+    addJsonBoolObject("relay2", relay2State);
     serializeJson(jsonDocument, buffer);
 }
 
@@ -25,10 +35,6 @@ void setSettingsFromJson(DynamicJsonDocument &jsonDocument)
         BATTERY_VOLTAGE_DIVIDER_RATIO = jsonDocument["batteryVoltageDividerRatio"].as<float>();
     if (jsonDocument.containsKey("batteryVoltageCorrection"))
         BATTERY_VOLTAGE_CORRECTION = jsonDocument["batteryVoltageCorrection"].as<float>();
-    if (jsonDocument.containsKey("solarVoltageDividerRatio"))
-        SOLAR_VOLTAGE_DIVIDER_RATIO = jsonDocument["solarVoltageDividerRatio"].as<float>();
-    if (jsonDocument.containsKey("solarVoltageCorrection"))
-        SOLAR_VOLTAGE_CORRECTION = jsonDocument["solarVoltageCorrection"].as<float>();
     if (jsonDocument.containsKey("batteryMinimalVoltage"))
         BATTERY_MINIMAL_VOLTAGE = jsonDocument["batteryMinimalVoltage"].as<float>();
     if (jsonDocument.containsKey("sensorReadAndSendInterval"))
@@ -67,8 +73,6 @@ String createJsonStringFromSettings()
 
     jsonDocument["batteryVoltageDividerRatio"] = BATTERY_VOLTAGE_DIVIDER_RATIO;
     jsonDocument["batteryVoltageCorrection"] = BATTERY_VOLTAGE_CORRECTION;
-    jsonDocument["solarVoltageDividerRatio"] = SOLAR_VOLTAGE_DIVIDER_RATIO;
-    jsonDocument["solarVoltageCorrection"] = SOLAR_VOLTAGE_CORRECTION;
     jsonDocument["batteryMinimalVoltage"] = BATTERY_MINIMAL_VOLTAGE;
     jsonDocument["sensorReadAndSendInterval"] = SENSOR_READ_AND_SEND_INTERVAL;
     jsonDocument["requestTimeout"] = REQUEST_TIMEOUT;

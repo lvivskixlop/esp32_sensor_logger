@@ -10,8 +10,8 @@
 #include <http_helpers.h>
 #include <json_helpers.h>
 #include <eeprom_helpers.h>
-#include <voltage_helpers.h>
 #include <adapters.h>
+#include <voltage_helpers.h>
 
 #define DHTTYPE DHT11
 
@@ -20,17 +20,42 @@ unsigned long lowBatteryTime = 0;
 float temperature;
 float humidity;
 float batteryVoltage;
-float solarVoltage;
+int soilMoisture;
+bool relay1State = false;
+bool relay2State = false;
 
 DHT dht(DHTPIN, DHTTYPE);
-
 WebServer server(80);
 
 void setup_routing()
 {
 	server.on("/env", getEnv);
 	server.on("/setup", HTTP_POST, handleSettingsSetup);
+	server.on("/relay1", HTTP_POST, handleRelay1);
+	server.on("/relay2", HTTP_POST, handleRelay2);
 	server.begin();
+}
+
+void handleRelay1() {
+	if (server.hasArg("state")) {
+		String state = server.arg("state");
+		relay1State = (state == "1" || state == "true" || state == "on");
+		digitalWrite(RELAY_1_PIN, relay1State ? HIGH : LOW);
+		server.send(200, "application/json", "{\"success\":true,\"relay1\":" + String(relay1State ? "true" : "false") + "}");
+	} else {
+		server.send(400, "application/json", "{\"error\":\"Missing state parameter\"}");
+	}
+}
+
+void handleRelay2() {
+	if (server.hasArg("state")) {
+		String state = server.arg("state");
+		relay2State = (state == "1" || state == "true" || state == "on");
+		digitalWrite(RELAY_2_PIN, relay2State ? HIGH : LOW);
+		server.send(200, "application/json", "{\"success\":true,\"relay2\":" + String(relay2State ? "true" : "false") + "}");
+	} else {
+		server.send(400, "application/json", "{\"error\":\"Missing state parameter\"}");
+	}
 }
 
 void gatherData()
@@ -38,7 +63,10 @@ void gatherData()
 	temperature = dht.readTemperature();
 	humidity = dht.readHumidity();
 	batteryVoltage = readVoltagePrecise(ADC_BATTERY_VOLTAGE_PIN, BATTERY_VOLTAGE_DIVIDER_RATIO, BATTERY_VOLTAGE_CORRECTION);
-	solarVoltage = readVoltagePrecise(ADC_SOLAR_VOLTAGE_PIN, SOLAR_VOLTAGE_DIVIDER_RATIO, SOLAR_VOLTAGE_CORRECTION);
+	
+	// Read soil moisture (0-4095 to 0-100%)
+	int rawMoisture = analogRead(SOIL_MOISTURE_PIN);
+	soilMoisture = map(rawMoisture, 4095, 0, 0, 100); // Note: values are inverted (4095 is dry, 0 is wet)
 }
 
 void handleSettingsSetup()
@@ -61,7 +89,6 @@ void handleSettingsSetup()
 	}
 
 	setSettingsFromJson(jsonDocument);
-
 	saveSettingsToEEPROM();
 
 	String responseBody = createJsonStringFromSettings();
@@ -71,9 +98,7 @@ void handleSettingsSetup()
 void getEnv()
 {
 	gatherData();
-	String data = "Get env: batteryVoltage: " + String(batteryVoltage) + ", solarVoltage: " + String(solarVoltage);
-	Serial.println(data);
-	createEnvJson(temperature, humidity, batteryVoltage, solarVoltage);
+	createEnvJson(temperature, humidity, batteryVoltage, soilMoisture, relay1State, relay2State);
 	server.send(200, "application/json", buffer);
 }
 
@@ -84,21 +109,22 @@ void sendData(bool lastMessage = false)
 
 	if (isnan(temperature) || isnan(humidity) || currentTime == "")
 	{
-		Serial.println("Failed to gather complete data. Skipping...");
+		return;
 	}
 
 	if (WiFi.status() != WL_CONNECTED)
 	{
 		return;
 	}
+
 	String body;
 	if (lastMessage)
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\",\"solarVoltage\":" + String(solarVoltage) + "}";
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\",\"soilMoisture\":" + String(soilMoisture) + ",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
 	}
 	else
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"batteryVoltage\":" + String(batteryVoltage) + ",\"solarVoltage\":" + String(solarVoltage) + "}";
+		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"batteryVoltage\":" + String(batteryVoltage) + ",\"soilMoisture\":" + String(soilMoisture) + ",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
 	}
 	String response;
 	callApi(GOOGLE_APPS_SCRIPT_URL, "POST", body, "application/json", response);
@@ -112,7 +138,10 @@ String getTimeFromAPI()
 	if (response.length() > 0)
 	{
 		DynamicJsonDocument doc(1024);
-		deserializeJson(doc, response);
+		DeserializationError error = deserializeJson(doc, response);
+		if (error) {
+			return "";
+		}
 		return doc["dateTime"].as<String>();
 	}
 	else
@@ -123,14 +152,26 @@ String getTimeFromAPI()
 
 void setup()
 {
+	delay(1000);
 	Serial.begin(9600);
+	delay(1000);
+	
 	dht.begin();
 	connectToWifi();
 	setup_routing();
+	
+	// Setup pins
 	pinMode(ADC_BATTERY_VOLTAGE_PIN, INPUT);
 	analogSetPinAttenuation(ADC_BATTERY_VOLTAGE_PIN, ADC_11db);
-	pinMode(ADC_SOLAR_VOLTAGE_PIN, INPUT);
-	analogSetPinAttenuation(ADC_SOLAR_VOLTAGE_PIN, ADC_11db);
+	pinMode(SOIL_MOISTURE_PIN, INPUT);
+	analogSetPinAttenuation(SOIL_MOISTURE_PIN, ADC_11db);
+	
+	// Setup relay pins
+	pinMode(RELAY_1_PIN, OUTPUT);
+	pinMode(RELAY_2_PIN, OUTPUT);
+	digitalWrite(RELAY_1_PIN, LOW);
+	digitalWrite(RELAY_2_PIN, LOW);
+	
 	EEPROM.begin(EEPROM_SIZE);
 	loadSettingsFromEEPROM();
 }
@@ -167,5 +208,7 @@ void loop()
 	{
 		reconnectToWifi();
 	}
+	
 	server.handleClient();
+	delay(10);
 }
