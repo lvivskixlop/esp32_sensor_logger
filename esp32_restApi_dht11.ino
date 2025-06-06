@@ -36,24 +36,32 @@ void setup_routing()
 	server.begin();
 }
 
-void handleRelay1() {
-	if (server.hasArg("state")) {
+void handleRelay1()
+{
+	if (server.hasArg("state"))
+	{
 		String state = server.arg("state");
 		relay1State = (state == "1" || state == "true" || state == "on");
-		digitalWrite(RELAY_1_PIN, relay1State ? HIGH : LOW);
+		digitalWrite(RELAY_1_PIN, relay1State ? LOW : HIGH);
 		server.send(200, "application/json", "{\"success\":true,\"relay1\":" + String(relay1State ? "true" : "false") + "}");
-	} else {
+	}
+	else
+	{
 		server.send(400, "application/json", "{\"error\":\"Missing state parameter\"}");
 	}
 }
 
-void handleRelay2() {
-	if (server.hasArg("state")) {
+void handleRelay2()
+{
+	if (server.hasArg("state"))
+	{
 		String state = server.arg("state");
 		relay2State = (state == "1" || state == "true" || state == "on");
-		digitalWrite(RELAY_2_PIN, relay2State ? HIGH : LOW);
+		digitalWrite(RELAY_2_PIN, relay2State ? LOW : HIGH);
 		server.send(200, "application/json", "{\"success\":true,\"relay2\":" + String(relay2State ? "true" : "false") + "}");
-	} else {
+	}
+	else
+	{
 		server.send(400, "application/json", "{\"error\":\"Missing state parameter\"}");
 	}
 }
@@ -63,7 +71,7 @@ void gatherData()
 	temperature = dht.readTemperature();
 	humidity = dht.readHumidity();
 	batteryVoltage = readVoltagePrecise(ADC_BATTERY_VOLTAGE_PIN, BATTERY_VOLTAGE_DIVIDER_RATIO, BATTERY_VOLTAGE_CORRECTION);
-	
+
 	// Read soil moisture (0-4095 to 0-100%)
 	int rawMoisture = analogRead(SOIL_MOISTURE_PIN);
 	soilMoisture = map(rawMoisture, 4095, 0, 0, 100); // Note: values are inverted (4095 is dry, 0 is wet)
@@ -102,34 +110,36 @@ void getEnv()
 	server.send(200, "application/json", buffer);
 }
 
-void updateRelaysByTime(const String& currentTime) {
+void updateRelaysByTime(const String &currentTime)
+{
 	// Extract hour from time string (format: "YYYY-MM-DDTHH:mm:ss.sssZ")
 	int currentHour = currentTime.substring(11, 13).toInt();
-	
+
 	// Update Relay 1
-	if (currentHour >= RELAY1_ON_HOUR && currentHour < RELAY1_OFF_HOUR) {
-		if (!relay1State) {
-			relay1State = true;
-			digitalWrite(RELAY_1_PIN, HIGH);  // Remember: HIGH turns relay ON due to active-LOW
-		}
-	} else {
-		if (relay1State) {
-			relay1State = false;
-			digitalWrite(RELAY_1_PIN, LOW);
-		}
+	if (currentHour >= RELAY1_ON_HOUR && currentHour < RELAY1_OFF_HOUR)
+	{
+		relay1State = true;
+		digitalWrite(RELAY_1_PIN, relay1State ? LOW : HIGH); // Remember: LOW turns relay ON due to active-LOW
 	}
-	
+	else
+	{
+
+		relay1State = false;
+		digitalWrite(RELAY_1_PIN, relay1State ? LOW : HIGH);
+	}
+
 	// Update Relay 2
-	if (currentHour >= RELAY2_ON_HOUR && currentHour < RELAY2_OFF_HOUR) {
-		if (!relay2State) {
-			relay2State = true;
-			digitalWrite(RELAY_2_PIN, HIGH);
-		}
-	} else {
-		if (relay2State) {
-			relay2State = false;
-			digitalWrite(RELAY_2_PIN, LOW);
-		}
+	if (currentHour >= RELAY2_ON_HOUR && currentHour < RELAY2_OFF_HOUR)
+	{
+
+		relay2State = true;
+		digitalWrite(RELAY_2_PIN, relay2State ? LOW : HIGH);
+	}
+	else
+	{
+
+		relay2State = false;
+		digitalWrite(RELAY_2_PIN, relay2State ? LOW : HIGH);
 	}
 }
 
@@ -138,8 +148,9 @@ void sendData(bool lastMessage = false)
 	gatherData();
 	String currentTime = getTimeFromAPI();
 
-	if (currentTime.length() > 0) {
-		updateRelaysByTime(currentTime);  // Update relay states based on time
+	if (currentTime.length() > 0)
+	{
+		updateRelaysByTime(currentTime); // Update relay states based on time
 	}
 
 	if (isnan(temperature) || isnan(humidity) || currentTime == "")
@@ -174,7 +185,8 @@ String getTimeFromAPI()
 	{
 		DynamicJsonDocument doc(1024);
 		DeserializationError error = deserializeJson(doc, response);
-		if (error) {
+		if (error)
+		{
 			return "";
 		}
 		return doc["dateTime"].as<String>();
@@ -190,23 +202,23 @@ void setup()
 	delay(1000);
 	Serial.begin(9600);
 	delay(1000);
-	
+
 	dht.begin();
 	connectToWifi();
 	setup_routing();
-	
+
 	// Setup pins
 	pinMode(ADC_BATTERY_VOLTAGE_PIN, INPUT);
 	analogSetPinAttenuation(ADC_BATTERY_VOLTAGE_PIN, ADC_11db);
 	pinMode(SOIL_MOISTURE_PIN, INPUT);
 	analogSetPinAttenuation(SOIL_MOISTURE_PIN, ADC_11db);
-	
+
 	// Setup relay pins and ensure they start in OFF state
 	pinMode(RELAY_1_PIN, OUTPUT);
 	pinMode(RELAY_2_PIN, OUTPUT);
-	digitalWrite(RELAY_1_PIN, HIGH);  // Ensure relay starts OFF
-	digitalWrite(RELAY_2_PIN, HIGH);  // Ensure relay starts OFF
-	
+	digitalWrite(RELAY_1_PIN, HIGH); // Ensure relay starts OFF
+	digitalWrite(RELAY_2_PIN, HIGH); // Ensure relay starts OFF
+
 	EEPROM.begin(EEPROM_SIZE);
 	loadSettingsFromEEPROM();
 }
@@ -243,7 +255,7 @@ void loop()
 	{
 		reconnectToWifi();
 	}
-	
+
 	server.handleClient();
 	delay(10);
 }
