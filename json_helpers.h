@@ -1,15 +1,7 @@
 StaticJsonDocument<4096> jsonDocument;
 char buffer[4096];
 
-void addJsonObject(char *tag, float value, char *unit)
-{
-    JsonObject obj = jsonDocument.createNestedObject();
-    obj["type"] = tag;
-    obj["value"] = value;
-    obj["unit"] = unit;
-}
-
-void addJsonBoolObject(char *tag, bool value)
+void addJsonStringObject(char* tag, String value)
 {
     JsonObject obj = jsonDocument.createNestedObject();
     obj["type"] = tag;
@@ -17,19 +9,33 @@ void addJsonBoolObject(char *tag, bool value)
     obj["unit"] = "";
 }
 
-void createEnvJson(float temperature, float humidity, float batteryVoltage, int soilMoisture, bool relay1State, bool relay2State)
+void addJsonFloatObject(char* tag, float value, char* unit)
+{
+    JsonObject obj = jsonDocument.createNestedObject();
+    obj["type"] = tag;
+    obj["value"] = value;
+    obj["unit"] = unit;
+}
+
+void addJsonBoolObject(char* tag, bool value)
+{
+    JsonObject obj = jsonDocument.createNestedObject();
+    obj["type"] = tag;
+    obj["value"] = value;
+    obj["unit"] = "";
+}
+
+void createEnvJson(float batteryVoltage, bool relay1State, bool relay2State, String currentTime)
 {
     jsonDocument.clear();
-    addJsonObject("temperature", temperature, "°C");
-    addJsonObject("humidity", humidity, "%");
-    addJsonObject("batteryVoltage", batteryVoltage, "V");
-    addJsonObject("soilMoisture", soilMoisture, "%");
+    addJsonFloatObject("batteryVoltage", batteryVoltage, "V");
     addJsonBoolObject("relay1", relay1State);
     addJsonBoolObject("relay2", relay2State);
+    addJsonStringObject("time", currentTime);
     serializeJson(jsonDocument, buffer);
 }
 
-void setSettingsFromJson(DynamicJsonDocument &jsonDocument)
+void setSettingsFromJson(DynamicJsonDocument& jsonDocument)
 {
     if (jsonDocument.containsKey("batteryVoltageDividerRatio"))
         BATTERY_VOLTAGE_DIVIDER_RATIO = jsonDocument["batteryVoltageDividerRatio"].as<float>();
@@ -37,14 +43,17 @@ void setSettingsFromJson(DynamicJsonDocument &jsonDocument)
         BATTERY_VOLTAGE_CORRECTION = jsonDocument["batteryVoltageCorrection"].as<float>();
     if (jsonDocument.containsKey("batteryMinimalVoltage"))
         BATTERY_MINIMAL_VOLTAGE = jsonDocument["batteryMinimalVoltage"].as<float>();
+    if (jsonDocument.containsKey("lowBatteryWorkTime"))
+        LOW_BATTERY_WORK_TIME = jsonDocument["lowBatteryWorkTime"].as<int>();
+
     if (jsonDocument.containsKey("sensorReadAndSendInterval"))
         SENSOR_READ_AND_SEND_INTERVAL = jsonDocument["sensorReadAndSendInterval"].as<int>();
+
     if (jsonDocument.containsKey("requestTimeout"))
         REQUEST_TIMEOUT = jsonDocument["requestTimeout"].as<int>();
     if (jsonDocument.containsKey("reconnectInterval"))
         RECONNECT_INTERVAL = jsonDocument["reconnectInterval"].as<int>();
-    if (jsonDocument.containsKey("lowBatteryWorkTime"))
-        LOW_BATTERY_WORK_TIME = jsonDocument["lowBatteryWorkTime"].as<int>();
+
     if (jsonDocument.containsKey("relay1OnHour"))
         RELAY1_ON_HOUR = jsonDocument["relay1OnHour"].as<int>();
     if (jsonDocument.containsKey("relay1OffHour"))
@@ -53,26 +62,33 @@ void setSettingsFromJson(DynamicJsonDocument &jsonDocument)
         RELAY2_ON_HOUR = jsonDocument["relay2OnHour"].as<int>();
     if (jsonDocument.containsKey("relay2OffHour"))
         RELAY2_OFF_HOUR = jsonDocument["relay2OffHour"].as<int>();
-    if (jsonDocument.containsKey("ssid"))
-        SSID = strdup(jsonDocument["ssid"].as<const char *>());
-    if (jsonDocument.containsKey("wifiPassword"))
-        WIFI_PASSWORD = strdup(jsonDocument["wifiPassword"].as<const char *>());
+    if (jsonDocument.containsKey("feedingCron"))
+        FEEDING_CRON = strdup(jsonDocument["feedingCron"].as<const char*>());
+    if (jsonDocument.containsKey("foodDispenserMotorDuration"))
+        FOOD_DISPENCER_MOTOR_DURATION = jsonDocument["foodDispenserMotorDuration"].as<int>();
+
+
     if (jsonDocument.containsKey("googleAppsScriptUrl"))
-        GOOGLE_APPS_SCRIPT_URL = strdup(jsonDocument["googleAppsScriptUrl"].as<const char *>());
+        GOOGLE_APPS_SCRIPT_URL = strdup(jsonDocument["googleAppsScriptUrl"].as<const char*>());
     if (jsonDocument.containsKey("timeApiUrl"))
-        TIME_API_URL = strdup(jsonDocument["timeApiUrl"].as<const char *>());
+        TIME_API_URL = strdup(jsonDocument["timeApiUrl"].as<const char*>());
     if (jsonDocument.containsKey("webhookSite"))
-        WEBHOOK_SITE = strdup(jsonDocument["webhookSite"].as<const char *>());
+        WEBHOOK_SITE = strdup(jsonDocument["webhookSite"].as<const char*>());
+
+    if (jsonDocument.containsKey("ssid"))
+        SSID = strdup(jsonDocument["ssid"].as<const char*>());
+    if (jsonDocument.containsKey("wifiPassword"))
+        WIFI_PASSWORD = strdup(jsonDocument["wifiPassword"].as<const char*>());
     if (jsonDocument.containsKey("localIp"))
-        LOCAL_IP.fromString(jsonDocument["localIp"].as<const char *>());
+        LOCAL_IP.fromString(jsonDocument["localIp"].as<const char*>());
     if (jsonDocument.containsKey("gateway"))
-        GATEWAY.fromString(jsonDocument["gateway"].as<const char *>());
+        GATEWAY.fromString(jsonDocument["gateway"].as<const char*>());
     if (jsonDocument.containsKey("subnet"))
-        SUBNET.fromString(jsonDocument["subnet"].as<const char *>());
+        SUBNET.fromString(jsonDocument["subnet"].as<const char*>());
     if (jsonDocument.containsKey("primaryDns"))
-        PRIMARY_DNS.fromString(jsonDocument["primaryDns"].as<const char *>());
+        PRIMARY_DNS.fromString(jsonDocument["primaryDns"].as<const char*>());
     if (jsonDocument.containsKey("secondaryDns"))
-        SECONDARY_DNS.fromString(jsonDocument["secondaryDns"].as<const char *>());
+        SECONDARY_DNS.fromString(jsonDocument["secondaryDns"].as<const char*>());
 }
 
 String createJsonStringFromSettings()
@@ -82,19 +98,26 @@ String createJsonStringFromSettings()
     jsonDocument["batteryVoltageDividerRatio"] = BATTERY_VOLTAGE_DIVIDER_RATIO;
     jsonDocument["batteryVoltageCorrection"] = BATTERY_VOLTAGE_CORRECTION;
     jsonDocument["batteryMinimalVoltage"] = BATTERY_MINIMAL_VOLTAGE;
+    jsonDocument["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
+
     jsonDocument["sensorReadAndSendInterval"] = SENSOR_READ_AND_SEND_INTERVAL;
+
     jsonDocument["requestTimeout"] = REQUEST_TIMEOUT;
     jsonDocument["reconnectInterval"] = RECONNECT_INTERVAL;
-    jsonDocument["lowBatteryWorkTime"] = LOW_BATTERY_WORK_TIME;
+
     jsonDocument["relay1OnHour"] = RELAY1_ON_HOUR;
     jsonDocument["relay1OffHour"] = RELAY1_OFF_HOUR;
     jsonDocument["relay2OnHour"] = RELAY2_ON_HOUR;
     jsonDocument["relay2OffHour"] = RELAY2_OFF_HOUR;
-    jsonDocument["ssid"] = SSID;
-    jsonDocument["wifiPassword"] = WIFI_PASSWORD;
+    jsonDocument["feedingCron"] = FEEDING_CRON;
+    jsonDocument["foodDispenserMotorDuration"] = FOOD_DISPENCER_MOTOR_DURATION;
+
     jsonDocument["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
     jsonDocument["timeApiUrl"] = TIME_API_URL;
     jsonDocument["webhookSite"] = WEBHOOK_SITE;
+
+    jsonDocument["ssid"] = SSID;
+    jsonDocument["wifiPassword"] = WIFI_PASSWORD;
     jsonDocument["localIp"] = LOCAL_IP.toString();
     jsonDocument["gateway"] = GATEWAY.toString();
     jsonDocument["subnet"] = SUBNET.toString();

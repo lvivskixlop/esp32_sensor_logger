@@ -12,6 +12,11 @@
 #include <eeprom_helpers.h>
 #include <adapters.h>
 #include <voltage_helpers.h>
+#include <time_helpers.h>
+// We’ll use LEDC channel 0, timer 0, 25 kHz, 7-bit resolution → 0…127 steps
+#define PWM_CHANNEL 0
+#define PWM_FREQUENCY 25000
+#define PWM_RES_BITS 7
 
 #define DHTTYPE DHT11
 
@@ -33,7 +38,23 @@ void setup_routing()
 	server.on("/setup", HTTP_POST, handleSettingsSetup);
 	server.on("/relay1", HTTP_POST, handleRelay1);
 	server.on("/relay2", HTTP_POST, handleRelay2);
+	server.on("/pwm", HTTP_POST, handlePwm);
 	server.begin();
+}
+
+void handlePwm()
+{
+	if (server.hasArg("pwm"))
+	{
+		String pwmString = server.arg("pwm");
+		int pwm = pwmString.toInt();
+		ledcWrite(PWM_PIN, pwm);
+		server.send(200, "application/json", "{\"success\":true,\"pwm\":" + pwmString + "}");
+	}
+	else
+	{
+		server.send(400, "application/json", "{\"error\":\"Missing pwm parameter\"}");
+	}
 }
 
 void handleRelay1()
@@ -68,13 +89,7 @@ void handleRelay2()
 
 void gatherData()
 {
-	temperature = dht.readTemperature();
-	humidity = dht.readHumidity();
 	batteryVoltage = readVoltagePrecise(ADC_BATTERY_VOLTAGE_PIN, BATTERY_VOLTAGE_DIVIDER_RATIO, BATTERY_VOLTAGE_CORRECTION);
-
-	// Read soil moisture (0-4095 to 0-100%)
-	int rawMoisture = analogRead(SOIL_MOISTURE_PIN);
-	soilMoisture = map(rawMoisture, 4095, 0, 0, 100); // Note: values are inverted (4095 is dry, 0 is wet)
 }
 
 void handleSettingsSetup()
@@ -106,14 +121,15 @@ void handleSettingsSetup()
 void getEnv()
 {
 	gatherData();
-	createEnvJson(temperature, humidity, batteryVoltage, soilMoisture, relay1State, relay2State);
+	String currentTime = time_get_iso8601();
+	createEnvJson(batteryVoltage, relay1State, relay2State, currentTime);
 	server.send(200, "application/json", buffer);
 }
 
-void updateRelaysByTime(const String &currentTime)
+void updateRelaysByTime()
 {
 	// Extract hour from time string (format: "YYYY-MM-DDTHH:mm:ss.sssZ")
-	int currentHour = currentTime.substring(11, 13).toInt();
+	int currentHour = time_get_hour();
 
 	// Update Relay 1
 	if (currentHour >= RELAY1_ON_HOUR && currentHour < RELAY1_OFF_HOUR)
@@ -146,11 +162,14 @@ void updateRelaysByTime(const String &currentTime)
 void sendData(bool lastMessage = false)
 {
 	gatherData();
-	String currentTime = getTimeFromAPI();
+	String currentTime = time_get_iso8601();
+	if (currentTime.length() == 0) {
+		currentTime = getTimeFromAPI(); // keep your old API fallback
+	}
 
 	if (currentTime.length() > 0)
 	{
-		updateRelaysByTime(currentTime); // Update relay states based on time
+		updateRelaysByTime(); // Update relay states based on time
 	}
 
 	if (isnan(temperature) || isnan(humidity) || currentTime == "")
@@ -203,15 +222,15 @@ void setup()
 	Serial.begin(9600);
 	delay(1000);
 
-	dht.begin();
 	connectToWifi();
+	time_init();
 	setup_routing();
 
 	// Setup pins
 	pinMode(ADC_BATTERY_VOLTAGE_PIN, INPUT);
 	analogSetPinAttenuation(ADC_BATTERY_VOLTAGE_PIN, ADC_11db);
-	pinMode(SOIL_MOISTURE_PIN, INPUT);
-	analogSetPinAttenuation(SOIL_MOISTURE_PIN, ADC_11db);
+
+	ledcAttach(PWM_PIN, PWM_FREQUENCY, PWM_RES_BITS);
 
 	// Setup relay pins and ensure they start in OFF state
 	pinMode(RELAY_1_PIN, OUTPUT);
@@ -225,14 +244,14 @@ void setup()
 
 void loop()
 {
+	time_loop_task();
 	if (batteryVoltage < BATTERY_MINIMAL_VOLTAGE)
 	{
 		lowBatteryTime = lowBatteryTime == 0 ? millis() : lowBatteryTime;
 		if (millis() - lowBatteryTime >= LOW_BATTERY_WORK_TIME)
 		{
-			// send goodbye message to google api
-			sendData(true);
-			delay(REQUEST_TIMEOUT);
+			//battery is too low, so here we do whatever we need to do, before it will shut down
+			//and don't forget to add some delay, if making an api call
 			//  go deep sleep
 			Serial.flush();
 			esp_deep_sleep_start();
@@ -247,7 +266,8 @@ void loop()
 
 	if (currentMillis - lastReadTime >= SENSOR_READ_AND_SEND_INTERVAL)
 	{
-		sendData();
+		//do whatever we need to do between send intervals
+		// sendData();
 		lastReadTime = currentMillis;
 	}
 
