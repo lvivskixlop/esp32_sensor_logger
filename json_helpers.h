@@ -25,10 +25,11 @@ void addJsonBoolObject(char* tag, bool value)
     obj["unit"] = "";
 }
 
-void createEnvJson(float batteryVoltage, bool relay1State, bool relay2State, String currentTime)
+void createEnvJson(float batteryVoltage, float weight, bool relay1State, bool relay2State, String currentTime)
 {
     jsonDocument.clear();
     addJsonFloatObject("batteryVoltage", batteryVoltage, "V");
+    addJsonFloatObject("weight", weight, "g");
     addJsonBoolObject("relay1", relay1State);
     addJsonBoolObject("relay2", relay2State);
     addJsonStringObject("time", currentTime);
@@ -66,6 +67,11 @@ void setSettingsFromJson(DynamicJsonDocument& jsonDocument)
         FEEDING_CRON = strdup(jsonDocument["feedingCron"].as<const char*>());
     if (jsonDocument.containsKey("foodDispenserMotorDuration"))
         FOOD_DISPENCER_MOTOR_DURATION = jsonDocument["foodDispenserMotorDuration"].as<int>();
+
+    if (jsonDocument.containsKey("maxStepsPerSec"))
+        MAX_STEPS_PER_SEC = jsonDocument["maxStepsPerSec"].as<float>();
+    if (jsonDocument.containsKey("defaultAceleration"))
+        DEFAULT_ACCELERATION = jsonDocument["defaultAceleration"].as<float>();
 
 
     if (jsonDocument.containsKey("googleAppsScriptUrl"))
@@ -111,6 +117,8 @@ String createJsonStringFromSettings()
     jsonDocument["relay2OffHour"] = RELAY2_OFF_HOUR;
     jsonDocument["feedingCron"] = FEEDING_CRON;
     jsonDocument["foodDispenserMotorDuration"] = FOOD_DISPENCER_MOTOR_DURATION;
+    jsonDocument["maxStepsPerSec"] = MAX_STEPS_PER_SEC;
+    jsonDocument["defaultAceleration"] = DEFAULT_ACCELERATION;
 
     jsonDocument["googleAppsScriptUrl"] = GOOGLE_APPS_SCRIPT_URL;
     jsonDocument["timeApiUrl"] = TIME_API_URL;

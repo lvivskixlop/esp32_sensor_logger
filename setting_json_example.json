@@ -14,6 +14,8 @@
   "relay2OffHour": 23,
   "feedingCron": "* 13 * * 1-5",
   "foodDispenserMotorDuration": 10000,
+  "maxStepsPerSec": 1000.0,
+  "defaultAceleration": 2000.0,
   "ssid": "TRDLviv_2.4",
   "wifiPassword": "0963739595",
   "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbzlhPt5KgMKRvYqPHTS6Qfln0peAIw5FWOxu_rNcW4eCGuDorw57CDuWHINWZ66R6mJ/exec",

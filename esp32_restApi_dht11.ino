@@ -2,9 +2,9 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
-#include <DHT.h>
 #include <HTTPClient.h>
 #include <EEPROM.h>
+#include <AccelStepper.h>
 #include <default_configs.h>
 #include <wifi_helpers.h>
 #include <http_helpers.h>
@@ -13,24 +13,24 @@
 #include <adapters.h>
 #include <voltage_helpers.h>
 #include <time_helpers.h>
+#include <motor_control.h>
+#include <hx711.h>
 // We’ll use LEDC channel 0, timer 0, 25 kHz, 7-bit resolution → 0…127 steps
 #define PWM_CHANNEL 0
 #define PWM_FREQUENCY 25000
 #define PWM_RES_BITS 7
 
-#define DHTTYPE DHT11
-
 unsigned long lastReadTime = 0;
 unsigned long lowBatteryTime = 0;
-float temperature;
-float humidity;
+
 float batteryVoltage;
-int soilMoisture;
+float weight = 0.0;
 bool relay1State = false;
 bool relay2State = false;
 
-DHT dht(DHTPIN, DHTTYPE);
 WebServer server(80);
+
+HX711Custom scale(HX711_DOUT, HX711_SCK, 128);
 
 void setup_routing()
 {
@@ -39,7 +39,36 @@ void setup_routing()
 	server.on("/relay1", HTTP_POST, handleRelay1);
 	server.on("/relay2", HTTP_POST, handleRelay2);
 	server.on("/pwm", HTTP_POST, handlePwm);
+	server.on("/motor", HTTP_POST, handleMotor);
 	server.begin();
+}
+
+void handleMotor()
+{
+	if (server.hasArg("speed") && server.hasArg("reverse") && server.hasArg("duration"))
+	{
+		String speedString = server.arg("speed");
+		String reverseString = server.arg("reverse");
+		String durationString = server.arg("duration");
+
+		short speed = (short)speedString.toInt();
+		if (speed > 255 || speed < 0) {
+			server.send(400, "application/json", "{\"error\":\"Speed should be from 0 to 255\"}");
+			return;
+		}
+
+		bool reverse = (reverseString == "1" || reverseString == "true" || reverseString == "on");
+
+		int duration = durationString.toInt();
+
+		spinMotor(speed, reverse, duration);
+
+		server.send(200, "application/json", "{\"success\":true}");
+	}
+	else
+	{
+		server.send(400, "application/json", "{\"error\":\"Missing speed, reverse or duration parameters\"}");
+	}
 }
 
 void handlePwm()
@@ -90,6 +119,14 @@ void handleRelay2()
 void gatherData()
 {
 	batteryVoltage = readVoltagePrecise(ADC_BATTERY_VOLTAGE_PIN, BATTERY_VOLTAGE_DIVIDER_RATIO, BATTERY_VOLTAGE_CORRECTION);
+
+	// Read weight from HX711 sensor
+	if (scale.is_ready()) {
+		float rawWeight = scale.getUnits(5); // Average over 5 readings
+		if (!isnan(rawWeight)) {
+			weight = rawWeight;
+		}
+	}
 }
 
 void handleSettingsSetup()
@@ -122,7 +159,7 @@ void getEnv()
 {
 	gatherData();
 	String currentTime = time_get_iso8601();
-	createEnvJson(batteryVoltage, relay1State, relay2State, currentTime);
+	createEnvJson(batteryVoltage, weight, relay1State, relay2State, currentTime);
 	server.send(200, "application/json", buffer);
 }
 
@@ -172,11 +209,6 @@ void sendData(bool lastMessage = false)
 		updateRelaysByTime(); // Update relay states based on time
 	}
 
-	if (isnan(temperature) || isnan(humidity) || currentTime == "")
-	{
-		return;
-	}
-
 	if (WiFi.status() != WL_CONNECTED)
 	{
 		return;
@@ -185,14 +217,14 @@ void sendData(bool lastMessage = false)
 	String body;
 	if (lastMessage)
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"voltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\",\"soilMoisture\":" + String(soilMoisture) + ",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
+		body = "{\"time\":\"" + currentTime + "\",\"batteryVoltage\":\"DISCHARGED(" + String(batteryVoltage) + ")\",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
 	}
 	else
 	{
-		body = "{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + ",\"time\":\"" + currentTime + "\",\"batteryVoltage\":" + String(batteryVoltage) + ",\"soilMoisture\":" + String(soilMoisture) + ",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
+		body = "{\"time\":\"" + currentTime + "\",\"batteryVoltage\":" + String(batteryVoltage) + ",\"relay1\":" + String(relay1State ? "true" : "false") + ",\"relay2\":" + String(relay2State ? "true" : "false") + "}";
 	}
 	String response;
-	callApi(GOOGLE_APPS_SCRIPT_URL, "POST", body, "application/json", response);
+	// callApi(GOOGLE_APPS_SCRIPT_URL, "POST", body, "application/json", response);
 }
 
 String getTimeFromAPI()
@@ -213,6 +245,17 @@ String getTimeFromAPI()
 	else
 	{
 		return "";
+	}
+}
+
+void motorTaskRunner(void* pvParameters) {
+	// This is the infinite loop for our dedicated motor task
+	for (;;) {
+		motorTask();
+		// A small delay is crucial to prevent this task from
+		// hogging 100% of the CPU and to allow the scheduler to work.
+		// 1ms is more than enough for smooth motor control.
+		vTaskDelay(1);
 	}
 }
 
@@ -238,8 +281,23 @@ void setup()
 	digitalWrite(RELAY_1_PIN, HIGH); // Ensure relay starts OFF
 	digitalWrite(RELAY_2_PIN, HIGH); // Ensure relay starts OFF
 
+	// Initialize HX711 sensor
+	scale.begin();
+
 	EEPROM.begin(EEPROM_SIZE);
 	loadSettingsFromEEPROM();
+
+	motorInit();
+
+	xTaskCreatePinnedToCore(
+		motorTaskRunner,
+		"Motor Task",
+		4096,
+		NULL,
+		1,
+		NULL,
+		0
+	);
 }
 
 void loop()
@@ -277,5 +335,5 @@ void loop()
 	}
 
 	server.handleClient();
-	delay(10);
+	// delay(10);
 }

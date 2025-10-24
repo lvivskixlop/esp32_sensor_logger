@@ -1,13 +1,13 @@
 // pins
 int ADC_BATTERY_VOLTAGE_PIN = 36;
-int SOIL_MOISTURE_PIN = 33;
 int RELAY_1_PIN = 13;
-int RELAY_2_PIN = 14;
-int DHTPIN = 27;
-int CLOCK_CLK = 34;
-int CLOCK_DAT = 35;
-int CLOCK_RST = 32;
-int PWM_PIN = 26;
+int RELAY_2_PIN = 32;
+int PWM_PIN = 33;
+int MOTOR_STEP_PIN = 25;
+int MOTOR_DIR_PIN = 26;
+int MOTOR_ENABLE_PIN = 27;
+int HX711_DOUT = 35;
+int HX711_SCK = 14;
 
 // Relay timing settings (24-hour format)
 int RELAY1_ON_HOUR = 7;
@@ -16,6 +16,9 @@ int RELAY2_ON_HOUR = 7;
 int RELAY2_OFF_HOUR = 23;
 char* FEEDING_CRON = "* 13 * * 1-5";
 int FOOD_DISPENCER_MOTOR_DURATION = 10000;
+
+float MAX_STEPS_PER_SEC = 1000.0f; // top speed (tune for your motor/driver)
+float DEFAULT_ACCELERATION = 2000.0f;     // steps/sec^2 (tune as needed)
 
 float BATTERY_VOLTAGE_DIVIDER_RATIO = 3.17;
 float BATTERY_VOLTAGE_CORRECTION = 1.064;
@@ -34,3 +37,5 @@ IPAddress GATEWAY(192, 168, 88, 1);
 IPAddress SUBNET(255, 255, 255, 0);
 IPAddress PRIMARY_DNS(8, 8, 8, 8);
 IPAddress SECONDARY_DNS(8, 8, 4, 4);
+
+// зелений А +, чорний А-, синій В +, червоний В-.
